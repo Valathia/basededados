@@ -6,5 +6,5 @@
 
 ## Não inclui:   
   A resolução das fichas de UML.  
-  ###Dica:   
+  ### Dica:   
   Quando tiverem que fazer seja o que for em UML, façam 1º no Relacional e depois passem para UML, é o que faz sentido, não se deixem ir na lenga-lenga.    
