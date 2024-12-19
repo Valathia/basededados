@@ -1,0 +1,376 @@
+1.
+Quais os nomes, lotações e moradas dos recintos que têm mais do que 5000 lugares? Ordene o resultado por ordem decrescente de lotação.
+
+select nome, lotacao, morada
+from
+    recintos
+where
+    lotacao>5000
+order by lotacao desc;
+
+
+2.
+Relativamente aos distritos que se encontram completamente integrados numa só região, apresente o código, a designação e o NUT1 da
+respetiva região e a designação do distrito, ordenando por código da região e por designação do distrito.
+
+select 
+    r.cod,
+    r.designacao regiao,
+    r.nut1,
+    d.designacao distrito
+    from
+    distritos d
+    join
+    regioes r
+    on
+    r.cod = d.regiao
+    order by r.cod, d.designacao
+
+
+3.
+Indique os nomes, moradas, lotações e descrições dos tipos dos recintos do concelho de Gondomar, 
+ordenados por nome do recinto.
+
+with dados as (
+    Select nome, morada, lotacao, tipo
+    from
+        recintos r
+    join
+        concelhos c
+    on
+        c.cod = r.concelho
+    where
+        c.designacao = "Gondomar"
+
+)
+select nome, morada, lotacao, descricao
+from
+    dados
+    join
+    tipos
+    on
+    tipos.tipo = dados.tipo
+    order by nome;
+;
+
+or
+
+select 
+    r.nome,
+    r.morada,
+    r.lotacao,
+    t.descricao
+from
+    recintos r
+join
+    tipos t
+on
+    t.tipo = r.tipo
+where r.concelho = (select cod from concelhos c where c.designacao = "Gondomar" )
+order by r.nome;
+
+
+4.
+Quais os recintos cujos tipos incluem “multiusos” na descrição? Indique os nomes dos recintos, as suas lotações e as descrições dos tipos. 
+Os resultados devem ser ordenados pelos nomes dos recintos.
+
+select nome, lotacao, descricao
+from
+    recintos
+    join
+    tipos
+    on
+    tipos.tipo = recintos.tipo 
+    where tipos.descricao like "%multiusos%"
+    order by nome;
+
+5.
+Qual o nome e a lotação dos recintos onde se realizam atividades de circo? Ordene decrescentemente por lotação.
+
+select nome, lotacao
+from
+    recintos
+    join
+    usos
+    on
+    usos.id = recintos.id 
+    join
+    atividades
+    on
+    usos.ref = atividades.ref
+    where
+    atividades.atividade = "circo"
+    order by lotacao desc;
+
+
+6.
+Quantos recintos existem por distrito? Indique a designação do distrito e o número de recintos (quant), ordenando por designação de distrito.
+
+select d.designacao, count(r.nome) quant
+from
+    recintos r
+    join
+    concelhos c
+    on
+    r.concelho = c.cod 
+    join
+    distritos d
+    on
+    d.cod = c.distrito
+    group by
+    distrito
+    order by d.designacao;
+
+7.
+Quantos concelhos (num_concelhos) não têm registado nenhum recinto com atividade de cinema?
+Nota: o resultado esperado é oculto para evitar respostas com o valor pré-determinado.
+
+with concelhoscinema as (
+select c.designacao, c.cod
+from
+    concelhos c
+    join
+    recintos r
+    on
+    r.concelho = c.cod
+    join
+    usos u
+    on
+    u.id = r.id
+    join
+    atividades a
+    on
+    a.ref = u.ref
+    where
+    a.atividade = "cinema"
+    group by designacao
+),
+hascinema as(
+    select count(cod) hcinema
+    from
+    concelhoscinema
+)
+select (count(c.designacao) - (hascinema.hcinema)) num_concelhos
+from
+    concelhos c, hascinema;
+
+
+or
+
+
+with hascinema as (
+select 
+    r.concelho
+from
+    recintos r
+join
+    usos u
+on
+    u.id = r.id
+join
+    atividades a
+on
+    a.ref = u.ref
+where a.atividade = "cinema"
+group by r.concelho
+)
+select 
+    count(c.cod) num_concelhos
+    from
+    concelhos c
+    where c.cod not in (select concelho from hascinema)
+    
+
+
+
+
+8.
+Quais os códigos e designações dos distritos em que todos os concelhos têm recintos registados? Os resultados devem ser ordenados por código de distrito.
+with concelhoscinema as (
+select c.designacao, c.cod, distrito
+from
+    concelhos c
+    join
+    recintos r
+    on
+    r.concelho = c.cod
+    group by designacao
+),
+concelhoscomr as 
+(select d.cod, d.designacao, count(c.designacao) nconcelhos
+    from
+        concelhoscinema c
+    join
+        distritos d
+    on
+        d.cod = c.distrito
+    group by distrito
+    order by d.cod
+),
+concelhospordistrito as (
+    select d.cod, d.designacao, count(c.designacao) nconcelhos
+    from 
+    concelhos c
+    join
+    distritos d
+    on
+    d.cod = c.distrito
+    group by d.cod
+    order by d.cod
+)
+select cd.cod, cd.designacao
+from
+    concelhospordistrito cd
+    join
+    concelhoscomr cr
+    on
+    (cr.nconcelhos = cd.nconcelhos
+    and
+    cd.cod = cr.cod)
+    order by cd.cod;
+
+
+or
+
+with hasrecinto as (
+select 
+    c.cod,
+    c.designacao,
+    count(r.id),
+    c.distrito
+from
+    recintos r
+join
+    concelhos c
+on
+    r.concelho = c.cod
+group by c.cod
+),
+
+totalcon as (
+select 
+d.cod,
+d.designacao,
+count(c.cod) n_con
+from 
+    concelhos c
+join
+    distritos d
+on c.distrito = d.cod
+group by d.cod
+order by d.cod
+),
+
+total as (
+select 
+    h.distrito,
+    count(h.cod) nr_has
+from hasrecinto h
+group by h.distrito
+)
+
+select 
+    tc.cod,
+    tc.designacao
+from
+    totalcon tc
+join
+    total t
+on
+    tc.cod = t.distrito
+where
+    t.nr_has = tc.n_con
+
+
+    
+
+9.
+Qual o id, nome e descrição de tipo dos recintos que têm a palavra 'teatro' na descrição do tipo, 
+mas nos quais não se realizam atividades de teatro, ordenando por id do recinto.
+
+with hasteatro as (
+select r.id, r.nome, t.descricao
+from
+    recintos r
+    join
+    tipos t
+    on
+    r.tipo = t.tipo
+    and
+    t.descricao like "%teatro%"
+),
+teatroatividade as (
+    select r.id, r.nome, r.tipo
+    from
+        recintos r
+    join
+        usos u
+    on 
+        r.id = u.id
+    join
+        atividades a
+    on
+        a.ref = u.ref
+        and a.atividade = "teatro"
+    join 
+        tipos t
+    on
+        t.tipo = r.tipo
+        and
+        t.descricao like "%teatro%"
+    group by r.id
+    order by r.id
+)
+select id, nome, descricao
+from
+    hasteatro h
+    where
+    h.id not in (select id from teatroatividade)
+    order by h.id;
+
+
+10.
+Qual a atividade mais frequente em cada concelho? Só interessam os casos em que há pelo menos 5 recintos com essa atividade. 
+Apresente o código e a designação do concelho, a atividade e o número de recintos (nr_recintos) em que esta decorre, ordenando por código de concelho.
+
+With actcount as (
+Select 
+    c.cod
+    ,c.designacao
+    ,a.atividade
+    ,count(r.id) nr_recintos
+from
+    recintos r
+    join
+    usos u
+    on
+    r.id = u.id
+    join
+    atividades a
+    on
+    u.ref = a.ref
+    join
+    concelhos c
+    on
+    c.cod = r.concelho
+    group by atividade,c.cod, c.designacao
+    order by c.cod
+),
+part as (
+    select *
+        ,rank() over (partition by a.cod order by nr_recintos desc) rnk
+    from
+        actcount a
+    where
+        nr_recintos >= 5
+    order by a.cod
+)
+select
+    cod
+    ,designacao
+    ,atividade
+    ,nr_recintos
+from
+    part
+where rnk = 1
+order by part.cod asc;

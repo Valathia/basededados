@@ -1,0 +1,55 @@
+a)
+π nr(Alunos)
+
+b)
+πcod,design(σcurso='MCI' (Cadeiras))
+
+c)
+πnome (Profs ⨝ Alunos)
+
+d)
+πnome Alunos - πnome Profs
+
+e)
+πnome Alunos ∪ πnome Profs
+
+f)
+πnr, nome σcod='ASI' (Alunos ⨝ Provas)
+
+g)πnome σcurso='LCI' (Cadeiras⨝Provas⨝Alunos)
+
+
+h)
+A = πnome,cod,mnota σmnota≥10 γnome,cod;max(nota)->mnota τnome(σcurso='LCI'(Cadeiras⨝Provas⨝Alunos))
+B = γcurso;count(cod)->ncadeiras σcurso='LCI'(Cadeiras)
+C = γnome; count(cod)->ncadeirasfeitas (A)
+πnome σncadeiras = ncadeirasfeitas (B⨝C)
+
+i)
+A = πnome,cod,curso,mnota σmnota≥10 γnome,cod,curso;max(nota)->mnota τnome((Cadeiras⨝Provas⨝Alunos))
+B = γcurso; count(cod)->ncadeiras (Cadeiras)
+C = γnome,curso; count(cod)->ncadeirasfeitas (A)
+πnome,curso σncadeiras = ncadeirasfeitas (B⨝C)
+
+j)
+πnrprovas γcount(*)->nrprovas (Provas)
+
+k)
+A = πnotamax γmax(nota)->notamax (Provas)
+B = πnotamin γmin(nota)->notamin (Provas)
+A⨝B
+
+l)
+A = πcod,soman γcod;sum(nota)->soman (Provas)
+B = πcod,somaa γcod;count(nr)->somaa (Provas)
+πcod,media<-(soman/somaa) (A⨝B)
+
+m)
+A = πnr,soman γnr;sum(nota)->soman σnota>=10(Provas)
+B = πnr,ncadeiras γnr;count(cod)->ncadeiras σnota>=10(Provas)
+πnome,media<-(soman/ncadeiras) (A⨝B⨝Alunos)
+
+n)
+A = πnome,cod,notamax γnome,nr,cod;max(nota)->notamax (Provas⨝Alunos)
+B = πcod,notamax γcod;max(nota)->notamax (Provas)
+τcod A⨝B

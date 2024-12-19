@@ -1,0 +1,69 @@
+1)
+    1) 
+        T1 : bfr = 4096 / 32 = 128
+            n = 10 000 / 128 = 79
+            4096 - 128x32 = 0       (sobra 0 bytes/bloco)
+        
+        T2 : bfr = 4096 / 130 = 31
+            n = 100 000 / 31 = 3226
+            4096 - 31x130 = 66       (sobra 66 bytes/bloco)
+    
+    2)
+        No caso PK:
+            T1 = log (79) = 7 
+            T2 = log (3226) = 12 
+            O ( log (n) ) 
+
+        No caso de ser outro atributo: 
+            T1 = 72
+            T2 = 3226
+            O ( n )
+
+
+2)
+
+    T1:
+        bfr = 4096 / 12 = 341
+        Index n = 100/341 = 1
+
+        blocos para o index: 1 
+        Acessos com index:  2 
+        Acessos sem index: log ( 100 ) = 7
+    
+    T2:
+        bfr = 4096 / 20 = 204
+        n = 10 000 / 204 = 50
+
+        blocos para o index: 50
+        Acessos com index: log(50) + 1 = 6+1 = 7
+        Acessos sem index: log(10 000) = 14  
+    
+3)
+
+    bfr = 4096 / 16 = 256 registos por bloco 
+    n = 25 000 / 256 = 98 blocos 
+
+    blocos para o index: 98
+    com index: log (98) + 1 = 8
+    sem index: 400
+
+4) 
+    1 Index:
+        bfr = 4096 / 16 = 256 
+        n = 256 000 / 256 = 1000 
+
+    2 Index:
+        bfr = 256 
+        n = 1000 / 256 = 4 
+
+
+    Seriam necessarios 1004 blocos adicionais 
+
+    Pesquisa assumindo que está ordenado:
+        sem Index: 
+            log (256 000) = 18
+        1 Index:
+            log (1000) + 1 = 10 + 1 = 11 
+        2 Index: 
+            log (4) + 2 = 2 + 2 = 4 
+

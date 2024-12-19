@@ -1,0 +1,573 @@
+#ficha 5 
+
+1. Qual o código da freguesia onde nasceu (ou onde reside, caso tenha nascido fora de Portugal)? - 1 row
+
+Select "codigo","nome" from "freguesias" where "nome" = "São Pedro da Cova";
+
+
+2. Quais os resultados obtidos por cada partido na freguesia da P1? - 12 rows 
+
+Select * from "votacoes" where "freguesia" = "130410";
+
+
+3. Quantas freguesias têm “Vilar” no nome? - 63 rows 
+
+Select * from "freguesias" where "nome" like "%Vilar%";
+
+
+4. Quais as freguesias do concelho de Espinho? - 5 rows 
+
+Select "nome" from "freguesias" where "concelho" = (Select "codigo" from "concelhos" where "nome" = "Espinho");
+
+
+5. Qual o código e o nome do distrito da freguesia de P1? - (13, Porto)
+
+Select "nome","codigo" from "distritos" where codigo = (select "distrito" from "concelhos" where codigo = (select "concelho" from "freguesias" where "codigo" = "130410" ));
+
+or 
+
+
+select "codigo", "nome"
+from "distritos" join "freguesias" join "concelhos" on freguesias.CONCELHO = concelhos.codigo and concelhos.DISTRITO = distritos.CODIGO
+where freguesias.codigo = "130410";
+
+
+6. Quantos mandatos teve cada partido no distrito de P5, por ordem decrescente dos mandatos. - 11 Rows
+
+select "partido","mandatos"
+from "listas"
+where "distrito" = "13"
+order by "mandatos" desc;
+
+
+
+7. Indique o nome do distrito, o número de votantes e o número de abstenções, mas só no caso de nesse distrito o número de abstenções ser superior a 75% do número de votantes. - 3 rows
+
+select "nome","votantes","abstencoes"
+from "participacoes" p join "distritos" d on d.CODIGO = p.DISTRITO
+where (cast(p.ABSTENCOES as float)/p.INSCRITOS) > (0.75*(cast(p.VOTANTES as float)/p.INSCRITOS));
+
+
+
+8. Quais as freguesias da região ‘M ́ que, para o partido PSN, deram um número zero de votos? Liste código e nome da freguesia. - 9 rows 
+
+select "codigo","nome"
+from "votacoes" v join "freguesias" f join "concelhos" c join "distritos" d on f.CODIGO = v.FREGUESIA and f.CONCELHO = c.CODIGO and d.CODIGO = c.DISTRITO 
+where d.REGIAO = "M" and v.PARTIDO = "PSN" and v.VOTOS = "0";
+
+
+
+9. Quais os partidos que não concorreram no distrito de Lisboa. - ("PDA" ... )
+
+select "sigla" from "partidos" where "sigla" not in
+(select "partido"
+from "votacoes" v join "freguesias" f join "concelhos" c join "distritos" d on f.CODIGO = v.FREGUESIA and f.CONCELHO = c.CODIGO and d.CODIGO = c.DISTRITO
+where d.nome = "Lisboa" group by "partido");
+
+
+
+10. Quantos votos teve cada partido em cada concelho?  - 2817 Rows 
+
+select 
+    "partido"
+    ,"concelho"
+    ,sum("votos")
+from 
+    votacoes v 
+    join 
+    freguesias f 
+    on 
+        f.codigo = v.freguesia
+    join 
+    concelhos c 
+    on
+        f.concelho = c.codigo
+group by 
+    partido, 
+    concelho;
+
+
+
+11. Quantos votos teve cada partido em cada distrito? - 182 rows 
+
+select "partido", "distrito", sum("votos")
+from votacoes v join freguesias f join concelhos c join distritos d on f.codigo = v.freguesia and f.concelho = c.codigo and c.distrito = d.codigo
+group by partido, distrito;
+
+
+
+12. Quantos votos teve cada partido globalmente? - 12 rows
+
+select "partido", sum("votos") 
+from votacoes 
+group by partido;
+
+
+
+13. Quais os totais de votos a nível nacional dos 5 maiores partidos? - 5 rows 
+
+select "partido", sum("votos") as total 
+from votacoes 
+group by partido
+order by total desc limit 5;
+
+
+
+14 Qual o concelho com mais freguesias do país? E qual o distrito com mais concelhos?
+
+14.1 (Barcelos, 89)
+
+select "concelho", "nome", count("freguesias") as nfreguesias 
+from concelhos c join freguesias f on  c.codigo = f.CONCELHO
+group by concelho order by nfreguesias desc limit 1;
+
+14.2 (Viseu, 24)
+
+select "distrito", "nome", count("concelhos") as nconcelhos 
+from distritos d join concelhos c on  c.distrito = d.codigo
+group by distrito order by nconcelhos desc limit 1;
+
+
+
+15. Qual o número médio de freguesias por concelho? - 13.7695
+
+with fregporconcelho as (
+select
+    c.nome as con
+    ,count("f.nome") as nfreguesias 
+from 
+    concelhos c
+join 
+    freguesias f 
+on  
+    c.codigo = f.CONCELHO
+group by 
+    concelho 
+order by 
+    nfreguesias desc
+)
+
+select
+    count(con) as nconcelhos
+    ,round(cast(sum(nfreguesias) as float)/count(con),4) as media
+from fregporconcelho;
+
+
+podia ter feito avg(nfreguesias)
+
+
+
+
+16.Quais os concelhos diferentes do mesmo distrito com o mesmo número de freguesias? Indique o código do distrito, e os nomes dos concelhos, sem repetições do tipo (A,B) e (B,A). - 125 rows 
+
+with dados as(
+    select 
+         c."distrito"
+        ,f."concelho"
+        ,c."nome"
+        ,count("freguesias") as nfreguesias 
+    from 
+        concelhos c 
+    join 
+        freguesias f 
+    join 
+        distritos d 
+    on  
+        c.codigo = f.CONCELHO 
+        and 
+        c.distrito = d.codigo
+    group by 
+        concelho 
+    order by 
+        nfreguesias desc
+),
+final as(
+    select 
+         d1.distrito
+        ,d1.concelho
+        ,d1.nome
+        ,d1.nfreguesias
+        ,d2.distrito
+        ,d2.concelho
+        ,d2.nome
+        ,d2.nfreguesias
+        ,row_number() over(partition by min(d1.nome || d2.nome, d2.nome || d1.nome) order by d1.nome) rn
+    from 
+        dados d1
+    join 
+        dados d2
+    on 
+        d1.distrito = d2.distrito
+    where 
+        d1.nome <> d2.nome
+        and 
+        d1.nfreguesias = d2.nfreguesias
+    order by
+         d1.concelho asc
+        ,d2.concelho asc
+        
+)
+select *
+from final
+where rn=1;
+
+
+
+
+17. Quais os nomes dos concelhos do distrito com maior número de votantes. - 16 rows
+
+with n as(
+select
+    distrito as ndistrito
+from
+    participacoes
+order by votantes desc limit 1
+)
+select 
+    concelhos.nome
+from
+    concelhos join n
+on
+    distrito = n.ndistrito;
+
+
+
+
+18.Qual o partido que registou o maior número de votos numa só freguesia? Indique a sigla do partido, o nome da freguesia e os votos correspondentes. - (Ps, agualva, 15188)
+
+select partido, freguesias.nome, votos
+from 
+    votacoes 
+join 
+    freguesias
+on 
+    votacoes.FREGUESIA = freguesias.CODIGO
+order by votos desc limit 1;
+
+
+
+
+19. Quais os partidos que tiveram zero mandatos em todos os distritos com “o” (maiúsculo ou minúsculo) no nome? - 7 Rows
+
+with allpart as (
+select     
+    d.CODIGO
+    ,d.NOME
+    ,p.sigla
+from
+    distritos d
+    join
+    partidos p
+    on 
+    1=1
+    where d.nome like "%o%"
+    order by d.CODIGO
+),
+mandato as (
+select 
+    a.sigla
+    --,l.MANDATOS
+    ,ifnull(l.mandatos,0) newmandatos
+    ,count(a.codigo) ndist
+    from
+    allpart a
+    left join
+    listas l on a.SIGLA = l.PARTIDO and a.codigo = l.distrito
+    where newmandatos = 0
+    group by sigla
+    order by sigla
+),
+allo as (
+select count(distritos.codigo) ndist
+    from
+    distritos
+    where distritos.nome like "%o%"
+)
+select m.sigla
+from 
+    mandato m
+    join
+    allo a
+    on
+    a.ndist = m.ndist
+
+
+
+
+20. Para cada distrito indique qual o seu nome e a designação e número de votos do partido que nele teve melhor votação. - 20 rows 
+
+With votosdistrito as (
+
+select 
+    d.codigo cod
+    ,d.nome name
+    ,v.PARTIDO partido
+    ,sum(v.votos) totalvotos
+from
+    votacoes v
+    join
+    freguesias f
+    on 
+    v.freguesia = f.codigo
+    join
+    concelhos c
+    on 
+    c.codigo = f.concelho
+    join
+    distritos d
+    on
+    d.codigo = c.distrito
+group by v.partido, v.freguesia and f.concelho, c.distrito
+order by c.distrito
+),
+subgrouprank as (
+
+select 
+   cod
+   ,name
+   ,partido
+    ,rank() over(partition by vd.cod order by totalvotos desc) ranknr
+from
+    votosdistrito vd
+)
+select
+    vd.cod
+    ,vd.name
+    ,vd.partido
+    ,vd.totalvotos
+    from
+    votosdistrito vd
+    join
+    subgrouprank sr
+    on
+        sr.cod = vd.cod
+    and
+    sr.partido = vd.partido
+    where sr.ranknr = 1
+    order by vd.cod;
+
+
+
+
+
+21. Houve algum partido a vencer em todas as freguesias de um concelho do distrito do Porto? Indique código do concelho e sigla do partido. - (PS: Gondomar, PS: Matosinhos)
+
+with fregrank as(
+select 
+    c.codigo
+    ,c.nome
+    ,f.NOME fregnome
+    ,v.partido
+    ,v.votos
+    , rank() over(partition by f.codigo order by v.votos desc) ranknr
+from
+    votacoes v
+    join
+    freguesias f
+    on
+    v.FREGUESIA = f.CODIGO
+    join
+    concelhos c
+    on
+    c.CODIGO = f.CONCELHO
+    where c.distrito = (select d.codigo from distritos d where d.nome = "Porto")
+    order by f.CODIGO
+),
+
+dados as (
+select 
+    fr.codigo
+    ,fr.nome
+    ,fr.partido
+    ,count(partido) nfregvenceu
+    , row_number() over(partition by fr.codigo order by fr.codigo) rownr
+from fregrank fr
+where ranknr = 1 and fr.votos > 0
+group by fr.codigo,fr.partido
+order by fr.codigo),
+final as (
+select
+    *,
+    count(rownr) total_rows
+    from dados
+    group by dados.codigo
+    order by dados.codigo
+)
+ select
+     f.partido
+     ,f.nome
+     from
+     final f
+     where total_rows = 1;
+
+
+
+
+
+22. Houve algum partido a vencer em todos os concelhos de um distrito? Indique código e nome do distrito e sigla do partido. - (PS:Faro, PS: Setubal)
+
+
+with votoConcelho as(
+select 
+    c.distrito
+    ,d.nome
+    ,c.codigo
+    ,c.nome nome_con
+    ,v.partido
+    ,v.votos
+    ,sum(v.votos) sum_votos
+    --, rank() over(partition by f.codigo order by v.votos desc) ranknr
+from
+    votacoes v
+    join
+    freguesias f
+    on
+    v.FREGUESIA = f.CODIGO
+    join
+    concelhos c
+    on
+    c.CODIGO = f.CONCELHO
+    join
+    distritos d
+    on
+    c.distrito = d.codigo
+    group by c.codigo, v.partido
+    order by c.CODIGO, sum_votos desc
+),
+
+partrank as (
+    select 
+        vc.distrito
+        ,vc.nome
+        ,vc.partido
+        ,vc.nome_con
+        ,vc.sum_votos
+        ,rank() over(partition by vc.codigo order by vc.sum_votos desc) ranknr
+    from votoConcelho vc
+),
+dados as(
+select *,
+    count(pr.partido) nconcelhos
+    from
+    partrank pr
+    where
+    ranknr = 1
+    group by pr.distrito,pr.partido
+    order by pr.distrito,nconcelhos desc
+),
+dados_n as (
+select *
+    ,row_number() over(partition by dados.distrito) rownr
+    from
+    dados
+),
+final as (
+select 
+    d.partido
+    ,d.nome
+    ,count(d.rownr) win
+    from
+    dados_n d
+    group by d.distrito
+)
+select 
+    f.partido,
+    f.nome
+    from 
+    final f
+    where 
+    f.win = 1
+
+
+
+
+23. Que partidos tiveram votação 0 em todas as freguesias de um concelho? Indique a sigla do partido e o nome do concelho. - 5 rows
+
+with votes as(
+select 
+    v.partido,
+    count(v.partido) novote,
+    c.codigo cod_concelho,
+    c.nome
+    from
+    votacoes v
+    join
+    freguesias f
+    on
+    f.codigo = v.freguesia
+    join 
+    concelhos c
+    on
+    f.concelho = c.codigo
+    where v.votos = 0
+    group by cod_concelho, partido
+    order by cod_concelho
+),
+fregcount as (
+select
+    c.codigo
+    ,c.nome 
+    ,count(f.codigo) nr_freg
+    from
+    freguesias f
+    join
+    concelhos c
+    where
+    c.codigo = f.concelho
+    group by c.codigo
+    order by c.codigo
+)
+select 
+    v.partido,
+    v.nome
+    from
+    votes v
+    join
+    fregcount f
+    on
+    v.cod_concelho = f.codigo
+    where
+    f.nr_freg = v.novote
+
+
+
+
+24. 12 rows
+Quais as diferenças entre as percentagens de votos e de mandatos a nível nacional dos vários partidos?
+i'm guessing this is the answer they want ? silly question.
+
+with mandate as (
+select 
+    partido,
+    round(cast(sum(mandatos)*100 as float)/226,2) mandatos_percent
+from listas l
+group by l.partido
+),
+votes as (
+select
+    partido,
+    round(cast(sum(votos)*100 as float)/5257127,2) votos_percent
+from
+    votacoes v
+group by partido
+)
+select
+    mandate.partido,
+    votos_percent,
+    mandatos_percent,
+    votos_percent - mandatos_percent diferenca
+from
+    votes
+join
+    mandate
+on
+    mandate.partido = votes.partido
+
+
+
+
+
+25. 56 rows 
+Quantos votos são precisos para eleger um deputado em cada distrito? --- esta pergunta não faz grande sentido e é uma trapalhada pegada
+
+
